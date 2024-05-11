@@ -17,7 +17,5 @@ const rules = ref<Record<string, any>>({});
 <style lang="less">
 .demo-page {
   width: 100%;
-  height: 100%;
-  padding: 10px 200px;
 }
 </style>

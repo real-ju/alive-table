@@ -2,7 +2,7 @@
   <iframe
     class="example-iframe"
     title="Inline Frame Example"
-    :src="'../example/index.html#' + url"
+    :src="'./example/index.html' + url"
     :style="{ height, maxWidth }"
   >
   </iframe>
