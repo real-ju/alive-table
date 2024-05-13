@@ -326,7 +326,6 @@ export default defineComponent({
 .alive-table {
   width: 100%;
   border: 1px solid #000000;
-  border-bottom: none;
   box-sizing: border-box;
   div {
     box-sizing: border-box;

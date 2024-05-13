@@ -39,7 +39,7 @@ export interface Field {
       };
   // 值区域
   value: {
-    type: 'string' | 'input' | 'input-number' | 'select' | 'slot' | 'editable-table';
+    type: 'string' | 'input' | 'input-number' | 'select' | 'slot' | 'editable-table'; // slot内容通过field-xxx-comp-slot插槽传入（xxx为Field.key值）
     size?: string; // Field.layout = horizontal表示所占宽度，Field.layout = vertical表示所占高度
     content?: string; // Field.type = string时指定显示文本
     compProps?: Object; // 值区域组件props，对应h()第二个参数

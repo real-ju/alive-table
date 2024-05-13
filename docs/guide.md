@@ -8,9 +8,9 @@
 
 ## 安装
 
-Github 地址：[https://github.com/real-ju/alive-table](https://github.com/real-ju/alive-table)
+Github 仓库地址：[https://github.com/real-ju/alive-table](https://github.com/real-ju/alive-table)
 
-clone 本项目到本地，复制组件源文件到项目中。
+clone 本仓库到本地，复制组件源文件到项目中。
 
 ## 示例
 
