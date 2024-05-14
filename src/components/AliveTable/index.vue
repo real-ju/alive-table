@@ -1,7 +1,8 @@
 <script lang="ts">
 import type { PropType } from 'vue';
-import type { Schema, FieldGroup, Field, CustomRow, CustomRowCell } from './types';
+import type { Schema, FieldGroup, Field, CustomRow, CustomCell } from './types';
 
+import { ref } from 'vue';
 import { Input, InputNumber, Select, Form, FormItem } from 'ant-design-vue/es';
 import EditableTable from './components/EditableTable/index.vue';
 
@@ -27,24 +28,28 @@ export default defineComponent({
       default: null
     }
   },
-  setup(props, { slots }) {
+  setup(props, { slots, expose }) {
     if (!props.schema || !props.model) {
       return () => null;
     }
 
-    // 构建CustomRowCell的节点
-    const generateCustomRowCellNodes = (arr: CustomRowCell[]): any => {
+    // 构建CustomCell的节点
+    const generateCustomCellNodes = (arr: CustomCell[]): any => {
       return arr.map((item) => {
+        const defaultSlot = slots[`custom-cell-${item.key}-slot`];
         return h(
           'div',
           {
-            class: 'cell custom-row-cell',
+            class: {
+              cell: item.content.type !== 'slot',
+              'custom-cell': true
+            },
             style: {
               flex: item.width ? 'none' : null,
               width: item.width ? item.width : null
             }
           },
-          item.content
+          item.content.type === 'string' ? item.content.text : defaultSlot && defaultSlot()
         );
       });
     };
@@ -58,6 +63,9 @@ export default defineComponent({
         if (item.type === 'field') {
           if (!item.key && !item.keyPath) {
             throw '存在field没有指定key或keyPath';
+          }
+          if (!item.keyPath && parent && !parent.key) {
+            throw '存在field-group没有指定key';
           }
           // 处理keyPath
           if (!item.keyPath) {
@@ -229,14 +237,13 @@ export default defineComponent({
             childNodes
           );
         } else if (item.type === 'field-group') {
-          if (!item.key) {
-            throw '存在field-group没有指定key';
-          }
           // 处理keyPath
-          if (parent) {
-            item.keyPath = parent.keyPath + '.' + item.key;
-          } else {
-            item.keyPath = item.key;
+          if (item.key) {
+            if (parent) {
+              item.keyPath = parent.keyPath + '.' + item.key;
+            } else {
+              item.keyPath = item.key;
+            }
           }
 
           const childNodes = [
@@ -296,11 +303,30 @@ export default defineComponent({
                 height: item.height ? item.height : null
               }
             },
-            generateCustomRowCellNodes(item.children)
+            generateCustomCellNodes(item.children)
           );
         }
       });
     };
+
+    const formRef = ref();
+    const formMethods = [
+      'clearValidate',
+      'resetFields',
+      'scrollToField',
+      'validate',
+      'validateFields'
+    ];
+
+    const exposeObj: Record<string, any> = {};
+
+    formMethods.forEach((item) => {
+      exposeObj[item] = (...rest: any[]) => {
+        return formRef.value && formRef.value[item](...rest);
+      };
+    });
+
+    expose(exposeObj);
 
     return () => {
       const nodes = generateNodes(props.schema);
@@ -310,6 +336,7 @@ export default defineComponent({
         h(
           Form,
           {
+            ref: formRef,
             autocomplete: 'off',
             model: props.model,
             rules: props.rules
@@ -441,12 +468,16 @@ export default defineComponent({
             width: 100%;
             height: 100%;
           }
+          .ant-form-item-control-input {
+            min-height: unset;
+          }
           .ant-form-item-explain {
             position: absolute;
             top: 100%;
             left: 0px;
             opacity: 0.8;
             pointer-events: none;
+            z-index: 1;
           }
         }
       }
@@ -524,10 +555,11 @@ export default defineComponent({
     width: 100%;
     display: flex;
     align-items: stretch;
-    .custom-row-cell {
+    .custom-cell {
       width: 0px;
       flex: 1;
-      & + .custom-row-cell {
+      position: relative;
+      & + .custom-cell {
         border-left: 1px solid #000000;
       }
     }
