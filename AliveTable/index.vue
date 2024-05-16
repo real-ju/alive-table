@@ -1,7 +1,8 @@
 <script lang="ts">
-import type { PropType } from 'vue';
-import type { Schema, FieldGroup, Field, CustomRow, CustomRowCell } from './types';
+import type { PropType, Ref } from 'vue';
+import type { Schema, FieldGroup, Field, CustomRow, CustomCell } from './types';
 
+import { ref } from 'vue';
 import { Input, InputNumber, Select, Form, FormItem } from 'ant-design-vue/es';
 import EditableTable from './components/EditableTable/index.vue';
 
@@ -27,37 +28,49 @@ export default defineComponent({
       default: null
     }
   },
-  setup(props, { slots }) {
-    if (!props.schema || !props.model) {
-      return () => null;
-    }
-
-    // 构建CustomRowCell的节点
-    const generateCustomRowCellNodes = (arr: CustomRowCell[]): any => {
+  setup(props, { slots, expose }) {
+    // 构建CustomCell的节点
+    const generateCustomCellNodes = (arr: CustomCell[]): any => {
       return arr.map((item) => {
+        const classObj: Record<string, boolean> = {
+          cell: item.content.type !== 'slot',
+          'custom-cell': true
+        };
+        if (item.key) {
+          classObj[item.key] = true;
+        }
+        const defaultSlot = slots[`custom-cell-${item.key}-slot`];
         return h(
           'div',
           {
-            class: 'cell custom-row-cell',
+            class: classObj,
             style: {
               flex: item.width ? 'none' : null,
               width: item.width ? item.width : null
             }
           },
-          item.content
+          item.content.type === 'string' ? item.content.text : defaultSlot && defaultSlot()
         );
       });
     };
 
+    // 可编辑表格组件引用数组
+    let editableTableRefArr: Ref[] = [];
     // 构建Table的节点
     const generateNodes = (
       arr: Array<FieldGroup | Field | CustomRow>,
       parent?: FieldGroup
     ): any => {
+      if (!parent) {
+        editableTableRefArr = [];
+      }
       return arr.map((item) => {
         if (item.type === 'field') {
           if (!item.key && !item.keyPath) {
             throw '存在field没有指定key或keyPath';
+          }
+          if (!item.keyPath && parent && !parent.key) {
+            throw '存在field-group没有指定key';
           }
           // 处理keyPath
           if (!item.keyPath) {
@@ -130,6 +143,9 @@ export default defineComponent({
             valueCellChildren = defaultSlot && defaultSlot();
           } else if (item.value.type === 'editable-table') {
             // 可编辑表格
+            // 创建引用
+            const tableRef = ref();
+            editableTableRefArr.push(tableRef);
             // 根据schema层级推断字段对应rules
             let modelRules: any = props.rules;
             if (props.rules) {
@@ -157,6 +173,7 @@ export default defineComponent({
             valueCellChildren = h(
               EditableTable,
               {
+                ref: tableRef,
                 tableProps: {
                   ...item.value.compProps,
                   dataSource: modelObj[modelKey]
@@ -229,14 +246,13 @@ export default defineComponent({
             childNodes
           );
         } else if (item.type === 'field-group') {
-          if (!item.key) {
-            throw '存在field-group没有指定key';
-          }
           // 处理keyPath
-          if (parent) {
-            item.keyPath = parent.keyPath + '.' + item.key;
-          } else {
-            item.keyPath = item.key;
+          if (item.key) {
+            if (parent) {
+              item.keyPath = parent.keyPath + '.' + item.key;
+            } else {
+              item.keyPath = item.key;
+            }
           }
 
           const childNodes = [
@@ -271,14 +287,18 @@ export default defineComponent({
               )
             );
           }
+          const classObj: Record<string, boolean> = {
+            row: true,
+            'field-group': true,
+            vertical: item.layout === 'vertical'
+          };
+          if (item.key) {
+            classObj[item.key] = true;
+          }
           return h(
             'div',
             {
-              class: {
-                row: true,
-                'field-group': true,
-                vertical: item.layout === 'vertical'
-              },
+              class: classObj,
               style: {
                 flex: item.height ? 'none' : null,
                 height: item.height ? item.height : null
@@ -296,13 +316,50 @@ export default defineComponent({
                 height: item.height ? item.height : null
               }
             },
-            generateCustomRowCellNodes(item.children)
+            generateCustomCellNodes(item.children)
           );
         }
       });
     };
 
+    const rootFormRef = ref();
+    const formMethods = [
+      'clearValidate',
+      'resetFields',
+      // 'scrollToField',
+      'validate',
+      'validateFields'
+    ];
+
+    const exposeObj: Record<string, any> = {};
+
+    formMethods.forEach((item) => {
+      if (item === 'validate' || item === 'validateFields') {
+        exposeObj[item] = (...rest: any[]) => {
+          const rootRst = rootFormRef.value ? rootFormRef.value[item](...rest) : Promise.resolve();
+          const childRstArr = editableTableRefArr.map((ref) => {
+            return ref.value && ref.value.formRef
+              ? ref.value.formRef[item](...rest)
+              : Promise.resolve();
+          });
+          return Promise.all([rootRst, ...childRstArr]);
+        };
+      } else {
+        exposeObj[item] = (...rest: any[]) => {
+          rootFormRef.value && rootFormRef.value[item](...rest);
+          editableTableRefArr.forEach((ref) => {
+            ref.value && ref.value.formRef && ref.value.formRef[item](...rest);
+          });
+        };
+      }
+    });
+
+    expose(exposeObj);
+
     return () => {
+      if (!props.schema || !props.model) {
+        return null;
+      }
       const nodes = generateNodes(props.schema);
       return h(
         'div',
@@ -310,6 +367,7 @@ export default defineComponent({
         h(
           Form,
           {
+            ref: rootFormRef,
             autocomplete: 'off',
             model: props.model,
             rules: props.rules
@@ -326,7 +384,6 @@ export default defineComponent({
 .alive-table {
   width: 100%;
   border: 1px solid #000000;
-  border-bottom: none;
   box-sizing: border-box;
   div {
     box-sizing: border-box;
@@ -442,12 +499,16 @@ export default defineComponent({
             width: 100%;
             height: 100%;
           }
+          .ant-form-item-control-input {
+            min-height: unset;
+          }
           .ant-form-item-explain {
             position: absolute;
             top: 100%;
             left: 0px;
             opacity: 0.8;
             pointer-events: none;
+            z-index: 1;
           }
         }
       }
@@ -525,10 +586,11 @@ export default defineComponent({
     width: 100%;
     display: flex;
     align-items: stretch;
-    .custom-row-cell {
+    .custom-cell {
       width: 0px;
       flex: 1;
-      & + .custom-row-cell {
+      position: relative;
+      & + .custom-cell {
         border-left: 1px solid #000000;
       }
     }
