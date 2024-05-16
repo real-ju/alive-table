@@ -89,6 +89,7 @@ const verify = () => {
 .demo-page {
   width: 100%;
   min-width: 1000px;
+  padding: 10px;
   .photo {
     width: 100%;
     height: 100%;
