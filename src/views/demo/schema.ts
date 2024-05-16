@@ -13,6 +13,7 @@ const sexOptions = ref([
   }
 ]);
 
+// 可编辑表格的列配置
 const tableColumns: any[] = [
   {
     title: '起止年月',
@@ -44,6 +45,7 @@ const tableColumns: any[] = [
   }
 ];
 
+// 结构图
 const schema: Schema = [
   {
     type: 'field-group',

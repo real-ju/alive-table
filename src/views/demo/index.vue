@@ -27,7 +27,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import { default as AliveTable, EditableTable } from '/@/components/AliveTable';
+import AliveTable from '/@/components/AliveTable';
 import schema from './schema';
 import photoUrl from '/@/assets/images/demo/photo.jpeg';
 
@@ -88,8 +88,7 @@ const verify = () => {
 <style lang="less">
 .demo-page {
   width: 100%;
-  min-width: 800px;
-  padding: 20px 200px;
+  min-width: 1000px;
   .photo {
     width: 100%;
     height: 100%;
