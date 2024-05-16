@@ -1,6 +1,6 @@
 <template>
   <div class="editable-table" v-if="tableProps && tableProps.columns && tableProps.dataSource">
-    <Form autocomplete="off" :model="tableProps.dataSource" :rules="formRules">
+    <Form ref="formRef" autocomplete="off" :model="tableProps.dataSource" :rules="formRules">
       <Table v-bind="props.tableProps" :pagination="false" bordered :scroll="tableScroll">
         <template #bodyCell="{ column, record, index }">
           <FormItem v-if="column.key && column.editComp" :name="[index, column.key]">
@@ -40,6 +40,8 @@ const props = defineProps({
   }
 });
 
+const formRef = ref();
+
 const tableScroll = computed(() => {
   const scroll = props.tableProps.scroll;
   if (scroll) {
@@ -55,6 +57,10 @@ const formRules = computed<any>(() => {
     return null;
   }
   return new Array(props.tableProps.dataSource.length).fill(props.rules);
+});
+
+defineExpose({
+  formRef
 });
 </script>
 

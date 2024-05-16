@@ -1,5 +1,5 @@
 <script lang="ts">
-import type { PropType } from 'vue';
+import type { PropType, Ref } from 'vue';
 import type { Schema, FieldGroup, Field, CustomRow, CustomCell } from './types';
 
 import { ref } from 'vue';
@@ -29,21 +29,21 @@ export default defineComponent({
     }
   },
   setup(props, { slots, expose }) {
-    if (!props.schema || !props.model) {
-      return () => null;
-    }
-
     // 构建CustomCell的节点
     const generateCustomCellNodes = (arr: CustomCell[]): any => {
       return arr.map((item) => {
+        const classObj: Record<string, boolean> = {
+          cell: item.content.type !== 'slot',
+          'custom-cell': true
+        };
+        if (item.key) {
+          classObj[item.key] = true;
+        }
         const defaultSlot = slots[`custom-cell-${item.key}-slot`];
         return h(
           'div',
           {
-            class: {
-              cell: item.content.type !== 'slot',
-              'custom-cell': true
-            },
+            class: classObj,
             style: {
               flex: item.width ? 'none' : null,
               width: item.width ? item.width : null
@@ -54,11 +54,16 @@ export default defineComponent({
       });
     };
 
+    // 可编辑表格组件引用数组
+    let editableTableRefArr: Ref[] = [];
     // 构建Table的节点
     const generateNodes = (
       arr: Array<FieldGroup | Field | CustomRow>,
       parent?: FieldGroup
     ): any => {
+      if (!parent) {
+        editableTableRefArr = [];
+      }
       return arr.map((item) => {
         if (item.type === 'field') {
           if (!item.key && !item.keyPath) {
@@ -138,6 +143,9 @@ export default defineComponent({
             valueCellChildren = defaultSlot && defaultSlot();
           } else if (item.value.type === 'editable-table') {
             // 可编辑表格
+            // 创建引用
+            const tableRef = ref();
+            editableTableRefArr.push(tableRef);
             // 根据schema层级推断字段对应rules
             let modelRules: any = props.rules;
             if (props.rules) {
@@ -165,6 +173,7 @@ export default defineComponent({
             valueCellChildren = h(
               EditableTable,
               {
+                ref: tableRef,
                 tableProps: {
                   ...item.value.compProps,
                   dataSource: modelObj[modelKey]
@@ -278,14 +287,18 @@ export default defineComponent({
               )
             );
           }
+          const classObj: Record<string, boolean> = {
+            row: true,
+            'field-group': true,
+            vertical: item.layout === 'vertical'
+          };
+          if (item.key) {
+            classObj[item.key] = true;
+          }
           return h(
             'div',
             {
-              class: {
-                row: true,
-                'field-group': true,
-                vertical: item.layout === 'vertical'
-              },
+              class: classObj,
               style: {
                 flex: item.height ? 'none' : null,
                 height: item.height ? item.height : null
@@ -309,11 +322,11 @@ export default defineComponent({
       });
     };
 
-    const formRef = ref();
+    const rootFormRef = ref();
     const formMethods = [
       'clearValidate',
       'resetFields',
-      'scrollToField',
+      // 'scrollToField',
       'validate',
       'validateFields'
     ];
@@ -321,14 +334,32 @@ export default defineComponent({
     const exposeObj: Record<string, any> = {};
 
     formMethods.forEach((item) => {
-      exposeObj[item] = (...rest: any[]) => {
-        return formRef.value && formRef.value[item](...rest);
-      };
+      if (item === 'validate' || item === 'validateFields') {
+        exposeObj[item] = (...rest: any[]) => {
+          const rootRst = rootFormRef.value ? rootFormRef.value[item](...rest) : Promise.resolve();
+          const childRstArr = editableTableRefArr.map((ref) => {
+            return ref.value && ref.value.formRef
+              ? ref.value.formRef[item](...rest)
+              : Promise.resolve();
+          });
+          return Promise.all([rootRst, ...childRstArr]);
+        };
+      } else {
+        exposeObj[item] = (...rest: any[]) => {
+          rootFormRef.value && rootFormRef.value[item](...rest);
+          editableTableRefArr.forEach((ref) => {
+            ref.value && ref.value.formRef && ref.value.formRef[item](...rest);
+          });
+        };
+      }
     });
 
     expose(exposeObj);
 
     return () => {
+      if (!props.schema || !props.model) {
+        return null;
+      }
       const nodes = generateNodes(props.schema);
       return h(
         'div',
@@ -336,7 +367,7 @@ export default defineComponent({
         h(
           Form,
           {
-            ref: formRef,
+            ref: rootFormRef,
             autocomplete: 'off',
             model: props.model,
             rules: props.rules
