@@ -51,8 +51,8 @@ export interface Field {
             key: string;
             editComp: {
               type: 'input' | 'input-number' | 'select';
-              props: Object; // 传给v-bind
-              on: Object; // 传给v-on
+              props?: Object; // 传给v-bind
+              on?: Object; // 传给v-on
             };
           }>;
         }); // 值区域组件props，对应h()第二个参数。如果值区域为editable-table，compProps表示内部Ant Table的props，且需要指定columns[i].editComp属性。

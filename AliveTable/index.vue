@@ -1,55 +1,57 @@
 <script lang="ts">
-import type { PropType, Ref } from 'vue';
-import type { Schema, FieldGroup, Field, CustomRow, CustomCell } from './types';
+import type { PropType, Ref } from "vue";
+import type { Schema, FieldGroup, Field, CustomRow, CustomCell } from "./types";
 
-import { ref } from 'vue';
-import { Input, InputNumber, Select, Form, FormItem } from 'ant-design-vue/es';
-import EditableTable from './components/EditableTable/index.vue';
+import { defineComponent, ref, h } from "vue";
+import { Input, InputNumber, Select, Form, FormItem } from "ant-design-vue/es";
+import EditableTable from "./components/EditableTable/index.vue";
 
 const compMap: Record<string, any> = {
   input: Input,
-  'input-number': InputNumber,
-  select: Select
+  "input-number": InputNumber,
+  select: Select,
 };
 
 export default defineComponent({
-  name: 'AliveTable',
+  name: "AliveTable",
   props: {
     schema: {
       type: Object as PropType<Schema>,
-      default: null
+      default: null,
     },
     model: {
       type: Object,
-      default: null
+      default: null,
     },
     rules: {
       type: Object,
-      default: null
-    }
+      default: null,
+    },
   },
   setup(props, { slots, expose }) {
     // 构建CustomCell的节点
     const generateCustomCellNodes = (arr: CustomCell[]): any => {
       return arr.map((item) => {
         const classObj: Record<string, boolean> = {
-          cell: item.content.type !== 'slot',
-          'custom-cell': true
+          cell: item.content.type !== "slot",
+          "custom-cell": true,
         };
         if (item.key) {
           classObj[item.key] = true;
         }
         const defaultSlot = slots[`custom-cell-${item.key}-slot`];
         return h(
-          'div',
+          "div",
           {
             class: classObj,
             style: {
-              flex: item.width ? 'none' : null,
-              width: item.width ? item.width : null
-            }
+              flex: item.width ? "none" : null,
+              width: item.width ? item.width : null,
+            },
           },
-          item.content.type === 'string' ? item.content.text : defaultSlot && defaultSlot()
+          item.content.type === "string"
+            ? item.content.text
+            : defaultSlot && defaultSlot()
         );
       });
     };
@@ -65,22 +67,22 @@ export default defineComponent({
         editableTableRefArr = [];
       }
       return arr.map((item) => {
-        if (item.type === 'field') {
+        if (item.type === "field") {
           if (!item.key && !item.keyPath) {
-            throw '存在field没有指定key或keyPath';
+            throw "存在field没有指定key或keyPath";
           }
           if (!item.keyPath && parent && !parent.key) {
-            throw '存在field-group没有指定key';
+            throw "存在field-group没有指定key";
           }
           // 处理keyPath
           if (!item.keyPath) {
             if (parent) {
-              item.keyPath = parent.keyPath + '.' + item.key;
+              item.keyPath = parent.keyPath + "." + item.key;
             } else {
               item.keyPath = item.key;
             }
           }
-          const keyPathArr = item.keyPath!.split('.');
+          const keyPathArr = item.keyPath!.split(".");
 
           // 根据schema层级推断字段所属model对象
           let modelObj: any = props.model;
@@ -107,20 +109,20 @@ export default defineComponent({
               ) {
                 compSlots.default = slots[key];
               } else {
-                const arr = key.split('-');
+                const arr = key.split("-");
                 const name = arr[arr.length - 1];
                 compSlots[name] = slots[key];
               }
             }
           });
 
-          if (item.value.type === 'string') {
+          if (item.value.type === "string") {
             // 字符串
-            valueCellChildren = h('span', null, item.value.content || '');
+            valueCellChildren = h("span", null, item.value.content || "");
           } else if (
-            item.value.type === 'input' ||
-            item.value.type === 'input-number' ||
-            item.value.type === 'select'
+            item.value.type === "input" ||
+            item.value.type === "input-number" ||
+            item.value.type === "select"
           ) {
             // 可输入组件
             // 添加表单验证
@@ -129,19 +131,19 @@ export default defineComponent({
                 compMap[item.value.type],
                 {
                   value: modelObj[modelKey],
-                  'onUpdate:value': (value: any) => {
+                  "onUpdate:value": (value: any) => {
                     modelObj[modelKey] = value;
                   },
-                  ...item.value.compProps
+                  ...item.value.compProps,
                 },
                 compSlots
               )
             );
-          } else if (item.value.type === 'slot') {
+          } else if (item.value.type === "slot") {
             // 自定义内容
             const defaultSlot = slots[`field-${item.key}-slot`];
             valueCellChildren = defaultSlot && defaultSlot();
-          } else if (item.value.type === 'editable-table') {
+          } else if (item.value.type === "editable-table") {
             // 可编辑表格
             // 创建引用
             const tableRef = ref();
@@ -164,7 +166,7 @@ export default defineComponent({
             Object.keys(slots).forEach((key) => {
               // table-xxx-col-yyy-comp-slot
               if (key.includes(`table-${item.key}-col-`)) {
-                const arr = key.split('-');
+                const arr = key.split("-");
                 const name = arr[arr.length - 3];
                 compSlots[`col-${name}-comp-slot`] = slots[key];
               }
@@ -176,80 +178,95 @@ export default defineComponent({
                 ref: tableRef,
                 tableProps: {
                   ...item.value.compProps,
-                  dataSource: modelObj[modelKey]
+                  dataSource: modelObj[modelKey],
                 },
-                rules: modelRules
+                rules: modelRules,
               },
               compSlots
             );
           }
           const childNodes = [
             h(
-              'div',
+              "div",
               {
                 class: {
-                  cell: item.value.type === 'string',
+                  cell: item.value.type === "string",
                   value: true,
-                  slot: item.value.type === 'slot'
+                  slot: item.value.type === "slot",
                 },
                 style: {
-                  flex: item.value.size ? 'none' : null,
-                  width: item.layout === 'horizontal' && item.value.size ? item.value.size : null,
-                  height: item.layout === 'vertical' && item.value.size ? item.value.size : null,
-                  border: !item.label ? 'none' : null
-                }
+                  flex: item.value.size ? "none" : null,
+                  width:
+                    item.layout === "horizontal" && item.value.size
+                      ? item.value.size
+                      : null,
+                  height:
+                    item.layout === "vertical" && item.value.size
+                      ? item.value.size
+                      : null,
+                  border: !item.label ? "none" : null,
+                },
               },
               valueCellChildren
-            )
+            ),
           ];
           if (item.label) {
             childNodes.unshift(
               h(
-                'div',
+                "div",
                 {
-                  class: 'cell label',
+                  class: "cell label",
                   style: {
-                    flex: item.label.size ? 'none' : null,
-                    width: item.layout === 'horizontal' && item.label.size ? item.label.size : null,
-                    height: item.layout === 'vertical' && item.label.size ? item.label.size : null
-                  }
+                    flex: item.label.size ? "none" : null,
+                    width:
+                      item.layout === "horizontal" && item.label.size
+                        ? item.label.size
+                        : null,
+                    height:
+                      item.layout === "vertical" && item.label.size
+                        ? item.label.size
+                        : null,
+                  },
                 },
-                item.name || ''
+                item.name || ""
               )
             );
           }
           return h(
-            'div',
+            "div",
             {
               class: {
                 row: !parent,
                 field: true,
                 [(item.key || item.keyPath)!]: true,
-                vertical: item.layout === 'vertical'
+                vertical: item.layout === "vertical",
               },
               style: {
-                flex: item.size || (parent && parent.contentLayout === 'float') ? 'none' : null,
+                flex:
+                  item.size || (parent && parent.contentLayout === "float")
+                    ? "none"
+                    : null,
                 width:
-                  parent && parent.contentLayout === 'horizontal' && item.size
+                  parent && parent.contentLayout === "horizontal" && item.size
                     ? item.size
-                    : parent && parent.contentLayout === 'float' && item.width
+                    : parent && parent.contentLayout === "float" && item.width
                     ? item.width
                     : null,
                 height:
-                  !parent || (parent.contentLayout === 'vertical' && item.size)
+                  !parent || (parent.contentLayout === "vertical" && item.size)
                     ? item.size
-                    : parent && parent.contentLayout === 'float' && item.height
+                    : parent && parent.contentLayout === "float" && item.height
                     ? item.height
-                    : null
-              }
+                    : null,
+              },
             },
             childNodes
           );
-        } else if (item.type === 'field-group') {
+        } else if (item.type === "field-group") {
           // 处理keyPath
           if (item.key) {
             if (parent) {
-              item.keyPath = parent.keyPath + '.' + item.key;
+              item.keyPath = parent.keyPath + "." + item.key;
             } else {
               item.keyPath = item.key;
             }
@@ -257,64 +274,70 @@ export default defineComponent({
 
           const childNodes = [
             h(
-              'div',
+              "div",
               {
                 class: {
                   content: true,
-                  vertical: item.contentLayout === 'vertical',
-                  float: item.contentLayout === 'float'
+                  vertical: item.contentLayout === "vertical",
+                  float: item.contentLayout === "float",
                 },
                 style: {
-                  border: !item.label ? 'none' : null
-                }
+                  border: !item.label ? "none" : null,
+                },
               },
               generateNodes(item.children, item)
-            )
+            ),
           ];
           if (item.label) {
             childNodes.unshift(
               h(
-                'div',
+                "div",
                 {
-                  class: 'cell label',
+                  class: "cell label",
                   style: {
-                    flex: item.label.size ? 'none' : null,
-                    width: item.layout === 'horizontal' && item.label.size ? item.label.size : null,
-                    height: item.layout === 'vertical' && item.label.size ? item.label.size : null
-                  }
+                    flex: item.label.size ? "none" : null,
+                    width:
+                      item.layout === "horizontal" && item.label.size
+                        ? item.label.size
+                        : null,
+                    height:
+                      item.layout === "vertical" && item.label.size
+                        ? item.label.size
+                        : null,
+                  },
                 },
-                item.name || ''
+                item.name || ""
               )
             );
           }
           const classObj: Record<string, boolean> = {
             row: true,
-            'field-group': true,
-            vertical: item.layout === 'vertical'
+            "field-group": true,
+            vertical: item.layout === "vertical",
           };
           if (item.key) {
             classObj[item.key] = true;
           }
           return h(
-            'div',
+            "div",
             {
               class: classObj,
               style: {
-                flex: item.height ? 'none' : null,
-                height: item.height ? item.height : null
-              }
+                flex: item.height ? "none" : null,
+                height: item.height ? item.height : null,
+              },
             },
             childNodes
           );
-        } else if (item.type === 'custom-row') {
+        } else if (item.type === "custom-row") {
           return h(
-            'div',
+            "div",
             {
-              class: 'custom-row',
+              class: "custom-row",
               style: {
-                flex: item.height ? 'none' : null,
-                height: item.height ? item.height : null
-              }
+                flex: item.height ? "none" : null,
+                height: item.height ? item.height : null,
+              },
             },
             generateCustomCellNodes(item.children)
           );
@@ -324,19 +347,21 @@ export default defineComponent({
 
     const rootFormRef = ref();
     const formMethods = [
-      'clearValidate',
-      'resetFields',
+      "clearValidate",
+      "resetFields",
       // 'scrollToField',
-      'validate',
-      'validateFields'
+      "validate",
+      "validateFields",
     ];
 
     const exposeObj: Record<string, any> = {};
 
     formMethods.forEach((item) => {
-      if (item === 'validate' || item === 'validateFields') {
+      if (item === "validate" || item === "validateFields") {
         exposeObj[item] = (...rest: any[]) => {
-          const rootRst = rootFormRef.value ? rootFormRef.value[item](...rest) : Promise.resolve();
+          const rootRst = rootFormRef.value
+            ? rootFormRef.value[item](...rest)
+            : Promise.resolve();
           const childRstArr = editableTableRefArr.map((ref) => {
             return ref.value && ref.value.formRef
               ? ref.value.formRef[item](...rest)
@@ -362,21 +387,21 @@ export default defineComponent({
       }
       const nodes = generateNodes(props.schema);
       return h(
-        'div',
-        { class: 'alive-table' },
+        "div",
+        { class: "alive-table" },
         h(
           Form,
           {
             ref: rootFormRef,
-            autocomplete: 'off',
+            autocomplete: "off",
             model: props.model,
-            rules: props.rules
+            rules: props.rules,
           },
           () => nodes
         )
       );
     };
-  }
+  },
 });
 </script>
 

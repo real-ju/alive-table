@@ -1,9 +1,25 @@
 <template>
-  <div class="editable-table" v-if="tableProps && tableProps.columns && tableProps.dataSource">
-    <Form ref="formRef" autocomplete="off" :model="tableProps.dataSource" :rules="formRules">
-      <Table v-bind="props.tableProps" :pagination="false" bordered :scroll="tableScroll">
+  <div
+    class="editable-table"
+    v-if="tableProps && tableProps.columns && tableProps.dataSource"
+  >
+    <Form
+      ref="formRef"
+      autocomplete="off"
+      :model="tableProps.dataSource"
+      :rules="formRules"
+    >
+      <Table
+        v-bind="props.tableProps"
+        :pagination="false"
+        bordered
+        :scroll="tableScroll"
+      >
         <template #bodyCell="{ column, record, index }">
-          <FormItem v-if="column.key && column.editComp" :name="[index, column.key]">
+          <FormItem
+            v-if="column.key && column.editComp"
+            :name="[index, column.key]"
+          >
             <component
               :is="compMap[column.editComp.type]"
               v-model:value="record[column.key]"
@@ -21,23 +37,31 @@
 </template>
 
 <script setup lang="ts">
-import { Table, Input, InputNumber, Select, Form, FormItem } from 'ant-design-vue/es';
+import { ref, computed } from "vue";
+import {
+  Table,
+  Input,
+  InputNumber,
+  Select,
+  Form,
+  FormItem,
+} from "ant-design-vue/es";
 
 const compMap: Record<string, any> = {
   input: Input,
-  'input-number': InputNumber,
-  select: Select
+  "input-number": InputNumber,
+  select: Select,
 };
 
 const props = defineProps({
   tableProps: {
     type: Object,
-    default: null
+    default: null,
   },
   rules: {
     type: Object,
-    default: null
-  }
+    default: null,
+  },
 });
 
 const formRef = ref();
@@ -60,7 +84,7 @@ const formRules = computed<any>(() => {
 });
 
 defineExpose({
-  formRef
+  formRef,
 });
 </script>
 
@@ -97,9 +121,9 @@ defineExpose({
               flex-direction: column;
               .ant-table-header {
                 flex: none;
-                .ant-table-cell {
-                  padding: 13px;
-                }
+                // .ant-table-cell {
+                //   padding: 13px;
+                // }
               }
               .ant-table-body {
                 height: 0px;
